@@ -19,7 +19,7 @@ function Write-Menu {
     [CmdletBinding()]
     param (
         [parameter(ValueFromPipeline)][array]$Items,
-        [parameter(Mandatory = $false, ValueFromPipelineByPropertyName)][string]$Name
+        [parameter(Mandatory = $true, ValueFromPipelineByPropertyName)][string]$Name
     )
     
     begin {

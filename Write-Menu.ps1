@@ -18,82 +18,127 @@ function Write-Menu {
     #>
     [CmdletBinding()]
     param (
-        [parameter(ValueFromPipeline)][array]$Items,
-        [parameter(Mandatory = $true, ValueFromPipelineByPropertyName)][string]$Name
+        [parameter(ValueFromPipeline)][array]$Item,
+        [parameter(Mandatory, ValueFromPipelineByPropertyName)]
+        [Alias("Name")]
+        [string]$DisplayName
     )
     
     begin {
-        #$currentState = 0
-        $searchMenu = [ordered] @{ }
-    }
-    process { 
-        $ChoiceItems += $Items
-    }
-    end {
         $htMenu = [ordered] @{ }
-        for ($i = 1; $i -le $ChoiceItems.Count; $i++) {
-            Write-Verbose "Adding $($ChoiceItems[$i - 1]) as choice $i"
-            $htMenu.Add("$i", $ChoiceItems[$i - 1])
+        $htDisplayName = [ordered] @{ }
+        $counter = 1
+        function Add-MenuOptions {
+            param (
+                $Menu
+            )
+            $Menu.Add("b", "Go back")
+            $Menu.Add("q", "Quit")
+            return $Menu
         }
-        #$htMenu.Add("b", "Go back")
-        $htMenu.Add("q", "Quit")
-            
-        if ($htMenu.Count -ge 5) {
-            do {
-                [string]$answer = (Read-Host "This will print $($htMenu.Count-1) options`nDo you want to (s)earch, (l)ist or (q)uit?").ToLower()
-            } while ($answer -notin "s", "l", "q")
-            if ($answer -eq "s") {
-                $searchString = Read-Host -Prompt "Search for"
-                $searchResults = $htMenu.GetEnumerator() | Where-Object { $_.Value.Name -match $searchString }
-                for ($i = 1; $i -le $searchResults.Count; $i++) {
-                    Write-Verbose "Adding $($searchResults[$i - 1]) as choice $i"
-                    $searchMenu.Add("$i", $searchResults[$i - 1].Value)
+        function Get-Menu {
+            [CmdletBinding()]
+            param (
+                $Menu = @{},
+                $DisplayName,
+                $SearchString
+            )
+            if ($null -eq $SearchString) {
+                $Menu = Add-MenuOptions $Menu
+                foreach ($key in $Menu.Keys) {
+                    if ($key -eq "q") {
+                        Write-Host "'$key' for: $($Menu[$key])"
+                    }
+                    elseif ($key -eq "b") {
+                        Write-Host "'$key' for: $($Menu[$key])"
+                    }
+                    else {
+                        Write-Host "'$key' for: $($DisplayName[$key])"
+                    }
                 }
-                $searchMenu.Add("q", "Quit")
+                do {
+                    [string]$choice = Read-Host "Choice"
+                } until ($choice -in $Menu.Keys)
+                
+                if ($choice -in "q", "b") {
+                    return
+                }
+                return $Menu[$choice]
+            }
+            else {
+                $searchMenu = [ordered] @{ }
+                $searchDisplayName = [ordered] @{ }
+                $searchResults = $menu.GetEnumerator() | Where-Object { $_.Value.Name -match $searchString }
+                $indexCounter = 1
+                foreach ($result in $searchResults) {
+                    Write-Verbose "Adding $($result.Value) as choice $indexCounter"
+                    $searchMenu.Add("$indexCounter", $result.Value)
+                    $searchDisplayName.Add("$indexCounter", $DisplayName[$result.Key])
+                }
+                $searchMenu = Add-MenuOptions $searchMenu
                 foreach ($key in $searchMenu.Keys) {
                     if ($key -eq "q") {
                         Write-Host "'$key' for: $($searchMenu[$key])"
                     }
+                    elseif ($key -eq "b") {
+                        Write-Host "'$key' for: $($searchMenu[$key])"
+                    }
                     else {
-                        Write-Host "'$key' for: $($searchMenu[$key].$Name)"
+                        Write-Host "'$key' for: $($searchDisplayName[$key])"
                     }
                 }
                     
                 do {
-                    [string]$choice = Read-Host "Choice"
+                    $choice = Read-Host "Choice"
                 } until ($choice -in $searchMenu.Keys)
                     
-                if ($choice -eq "q") {
+                if ($choice -notmatch '^[0-9]+$') {
                     return
                 }
                 return $searchMenu[$choice]
             }
-            if ($answer -eq "q") {
-                return
-            }
         }
-
-        foreach ($key in $htMenu.Keys) {
-            if ($key -eq "q") {
-                Write-Host "'$key' for: $($htMenu[$key])"
+    }
+    process {
+        $Item.ForEach(
+            {
+                Write-Verbose "Adding $_ as choice $counter"
+                $htMenu.Add("$counter", $_)
             }
-            else {
-                if ($searchString -and $htMenu[$key].$Name -notlike "*$searchString*") {
-                    #Write-Host "'$key' for: $($htMenu[$key].$Name)"
+        )
+        $DisplayName.ForEach(
+            {
+                Write-Verbose "Adding $_ as display name $counter"
+                $htDisplayName.Add("$counter", $_)
+            }
+        )
+        $counter++
+    }
+    end {
+        if ($htMenu.Count -ge 1) {
+            do {
+                do {
+                    [string]$answer = (Read-Host "This will print $($htMenu.Count) options`nDo you want to (S)earch, (L)ist or (Q)uit?").ToLower()
+                } while ($answer -notin "s", "l", "q")
+                switch ($answer) {
+                    "s" {
+                        $searchString = Read-Host -Prompt "Search for"
+                        Get-Menu -Menu $htMenu -DisplayName $htDisplayName -SearchString $searchString
+                    }
+                    "l" {
+                        Get-Menu -Menu $htMenu -DisplayName $htDisplayName
+                    }
+                    "b" {
+                        $answer = $null
+                    }
+                    "q" {
+                        return
+                    }
                 }
-                else {
-                    Write-Host "'$key' for: $($htMenu[$key].$Name)"
-                }
-            }
+            } until ($answer -eq "q") 
         }
-
-        do {
-            [string]$choice = Read-Host "Choice"
-        } until ($choice -in $htMenu.Keys)
-            
-        if ($choice -eq "q") {
-            return
+        else {
+            Get-Menu -Menu $htMenu -Name $htDisplayName
         }
-        return $htMenu[$choice]
     }
 }

@@ -32,8 +32,11 @@ function Write-Menu {
             param (
                 $Menu
             )
-            $Menu.Add("b", "Go back")
-            $Menu.Add("q", "Quit")
+            try {
+                $Menu.Add("b", "Go back")
+                $Menu.Add("q", "Quit")
+            }
+            catch {}
             return $Menu
         }
         function Get-Menu {
@@ -46,22 +49,16 @@ function Write-Menu {
             if ($null -eq $SearchString) {
                 $Menu = Add-MenuOptions $Menu
                 foreach ($key in $Menu.Keys) {
-                    if ($key -eq "q") {
-                        Write-Host "'$key' for: $($Menu[$key])"
-                    }
-                    elseif ($key -eq "b") {
-                        Write-Host "'$key' for: $($Menu[$key])"
-                    }
-                    else {
-                        Write-Host "'$key' for: $($DisplayName[$key])"
+                    switch ($key) {
+                        ({ $_ -in "q", "b" }) { Write-Host "'$key' for: $($Menu[$key])"; break }
+                        Default { Write-Host "'$key' for: $($DisplayName[$key])" }
                     }
                 }
                 do {
                     [string]$choice = Read-Host "Choice"
                 } until ($choice -in $Menu.Keys)
-                
                 if ($choice -in "q", "b") {
-                    return
+                    return $choice
                 }
                 return $Menu[$choice]
             }
@@ -77,21 +74,14 @@ function Write-Menu {
                 }
                 $searchMenu = Add-MenuOptions $searchMenu
                 foreach ($key in $searchMenu.Keys) {
-                    if ($key -eq "q") {
-                        Write-Host "'$key' for: $($searchMenu[$key])"
-                    }
-                    elseif ($key -eq "b") {
-                        Write-Host "'$key' for: $($searchMenu[$key])"
-                    }
-                    else {
-                        Write-Host "'$key' for: $($searchDisplayName[$key])"
+                    switch ($key) {
+                        ({ $_ -in "q", "b" }) { Write-Host "'$key' for: $($searchMenu[$key])"; break }
+                        Default { Write-Host "'$key' for: $($searchDisplayName[$key])" }
                     }
                 }
-                    
                 do {
                     $choice = Read-Host "Choice"
                 } until ($choice -in $searchMenu.Keys)
-                    
                 if ($choice -notmatch '^[0-9]+$') {
                     return
                 }
@@ -117,16 +107,24 @@ function Write-Menu {
     end {
         if ($htMenu.Count -ge 1) {
             do {
-                do {
-                    [string]$answer = (Read-Host "This will print $($htMenu.Count) options`nDo you want to (S)earch, (L)ist or (Q)uit?").ToLower()
-                } while ($answer -notin "s", "l", "q")
+                [string]$answer = (Read-Host "This will print $(($hashtable.Keys | Where-Object {$_ -notin "b", "q"}).Count) options`nDo you want to (S)earch, (L)ist or (Q)uit?").ToLower()
                 switch ($answer) {
                     "s" {
                         $searchString = Read-Host -Prompt "Search for"
-                        Get-Menu -Menu $htMenu -DisplayName $htDisplayName -SearchString $searchString
+                        $res = Get-Menu -Menu $htMenu -DisplayName $htDisplayName -SearchString $searchString
+                        if ($res -in "q", "b") { 
+                            $answer = $res
+                            break
+                        }
+                        return $res
                     }
                     "l" {
-                        Get-Menu -Menu $htMenu -DisplayName $htDisplayName
+                        $res = Get-Menu -Menu $htMenu -DisplayName $htDisplayName
+                        if ($res -in "q", "b") { 
+                            $answer = $res
+                            break
+                        }
+                        return $res
                     }
                     "b" {
                         $answer = $null

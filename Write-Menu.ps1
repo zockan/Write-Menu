@@ -1,21 +1,4 @@
 function Write-Menu {
-    <#
-    .SYNOPSIS
-        Outputs a menu when given an array
-    .DESCRIPTION
-        Outputs menu and gives options to choose an item when given an array.
-        You can choose which property to show in menu.
-    .EXAMPLE
-        PS C:\> Write-Menu (Get-ChildItem) -DisplayProperty BaseName
-        Prints out all Items from Get-ChildItem in a numbered menu with the Items BaseName
-    .INPUTS
-        -ChoiceItems []
-        -DisplayProperty <string>
-    .OUTPUTS
-        Numbered menu
-    .NOTES
-        
-    #>
     [CmdletBinding()]
     param (
         [parameter(ValueFromPipeline)][array]$Item,
